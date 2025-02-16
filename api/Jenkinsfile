@@ -1,0 +1,138 @@
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME = 'code-push-api'
+        DISCORD_WEBHOOK_URL = credentials('discord-webhook')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Load Git Info') {
+            steps {
+                script {
+                    env.GIT_COMMIT = sh(
+                        script: 'git rev-parse HEAD',
+                        returnStdout: true
+                    ).trim()
+                    env.GIT_COMMIT_AUTHOR = sh(
+                        script: "git log -1 --pretty=format:'%an'",
+                        returnStdout: true
+                    ).trim()
+                    env.GIT_COMMIT_MESSAGE = sh(
+                        script: "git log -1 --pretty=format:'%s'",
+                        returnStdout: true
+                    ).trim()
+                    env.GIT_REPO_URL = sh(
+                        script: "git config --get remote.origin.url | sed 's/\\.git\$//'",
+                        returnStdout: true
+                    ).trim()
+                }
+            }
+        }
+
+        stage('Load Environment') {
+            steps {
+                script {
+                    withCredentials([file(credentialsId: "${APP_NAME}", variable: 'ENV_FILE')]) {
+                        sh '''
+                            cp "$ENV_FILE" "$WORKSPACE/api/.env"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    docker build -t ${APP_NAME} "$WORKSPACE/api"
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                    set -e
+
+                    . "$WORKSPACE/api/.env"
+
+                    : "${API_PORT:?Set API_PORT in .env}"
+
+                    docker rm -f ${APP_NAME} || true
+
+                    docker run -d \
+                        --name ${APP_NAME} \
+                        --restart always \
+                        --env-file "$WORKSPACE/api/.env" \
+                        -p "${API_PORT}:${API_PORT}" \
+                        ${APP_NAME}
+                '''
+            }
+        }
+
+        stage('Cleanup Docker') {
+            steps {
+                sh '''
+                    docker builder prune -f
+                    docker image prune -f
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment successful !!!'
+        }
+        failure {
+            echo '❌ Deployment failed !!!'
+        }
+        always {
+            script {
+                def buildStatus = currentBuild.currentResult.toLowerCase()
+                def buildEmoji = buildStatus == 'success' ? '✅' : '❌'
+                def commitLink = "${env.GIT_REPO_URL}/commit/${env.GIT_COMMIT}"
+
+                def discordDescription = """
+                    🚀 Jenkins Build Notification 🚀
+
+                    📦 Project Details:
+                    • Name: ${JOB_NAME}
+                    • Branch: ${env.BRANCH_NAME}
+
+                    🏗️ Build Information:
+                    • Status: ${currentBuild.currentResult} ${buildEmoji}
+                    • Build Number: #${BUILD_NUMBER}
+                    • Duration: ${currentBuild.duration / 1000} seconds
+
+                    📝 Commit Details:
+                    • Commit: ${env.GIT_COMMIT ?: 'N/A'}
+                    • Author: ${env.GIT_COMMIT_AUTHOR ?: 'Unknown'}
+                    • Message: ${env.GIT_COMMIT_MESSAGE ?: 'No commit message'}
+                    • Link: ${commitLink}
+
+                    🔗 Build Links:
+                    • Jenkins Build: ${BUILD_URL}
+                    • Console Output: ${BUILD_URL}console
+                    """.trim()
+
+                discordSend(
+                    description: discordDescription,
+                    link: env.BUILD_URL,
+                    result: currentBuild.currentResult,
+                    title: "Build Notification: ${JOB_NAME}",
+                    webhookURL: DISCORD_WEBHOOK_URL
+                )
+            }
+
+            cleanWs()
+        }
+    }
+}

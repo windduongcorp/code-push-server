@@ -3,11 +3,10 @@
     "module": "commonjs",
     "noImplicitAny": false,
     "target": "ES2022",
-    "outDir": "./bin",
+    "outDir": "./bin/script",
+    "rootDir": "./script",
     "skipLibCheck": true
   },
-  "exclude": [
-    "./bin",
-    "./node_modules"
-  ]
+  "include": ["script/**/*.ts"],
+  "exclude": ["./bin", "./node_modules", "./test"]
 }

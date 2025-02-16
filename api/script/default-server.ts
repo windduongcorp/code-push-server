@@ -53,13 +53,14 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
         const vaultName = process.env.AZURE_KEYVAULT_ACCOUNT;
         const url = `https://${vaultName}.vault.azure.net`;
 
-        const keyvaultClient = new SecretClient(url, credential);
+        keyvaultClient = new SecretClient(url, credential);
         const secret = await keyvaultClient.getSecret(`storage-${process.env.AZURE_STORAGE_ACCOUNT}`);
         storage = new AzureStorage(process.env.AZURE_STORAGE_ACCOUNT, secret);
       }
     })
     .then(() => {
       const app = express();
+      app.set("trust proxy", 1);
       const auth = api.auth({ storage: storage });
       const appInsights = api.appInsights();
       const redisManager = new RedisManager();

@@ -11,6 +11,14 @@ interface UpdatePackage {
   rollout?: number;
 }
 
+/** Public blob URL for clients (rewrite from internal Azurite / Docker host). */
+function rewriteBlobUrlForClient(url: string | undefined): string | undefined {
+  if (!url || !process.env.BLOB_URL) {
+    return url;
+  }
+  return url.replace("http://127.0.0.1:10000", process.env.BLOB_URL);
+}
+
 export function getUpdatePackageInfo(packageHistory: Package[], request: UpdateCheckRequest): UpdateCheckCacheResponse {
   const updatePackage: UpdatePackage = getUpdatePackage(packageHistory, request, /*ignoreRolloutPackages*/ false);
   let cacheResponse: UpdateCheckCacheResponse;
@@ -114,10 +122,12 @@ function getUpdatePackage(packageHistory: Package[], request: UpdateCheckRequest
     latestSatisfyingEnabledPackage.diffPackageMap &&
     latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash]
   ) {
-    updateDetails.downloadURL = latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash].url;
+    updateDetails.downloadURL = rewriteBlobUrlForClient(
+      latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash].url
+    );
     updateDetails.packageSize = latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash].size;
   } else {
-    updateDetails.downloadURL = latestSatisfyingEnabledPackage.blobUrl;
+    updateDetails.downloadURL = rewriteBlobUrlForClient(latestSatisfyingEnabledPackage.blobUrl);
     updateDetails.packageSize = latestSatisfyingEnabledPackage.size;
   }
 
