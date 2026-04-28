@@ -46,7 +46,7 @@ export function AppsManager({ apps, newName, setNewName, onAdd, onRename, onTran
               {apps.map((app) => (
                 <TableRow key={app.name}>
                   <TableCell>
-                    <Link className="text-primary hover:underline" to={`/apps/${encodeURIComponent(app.name)}`}>
+                    <Link className="text-primary hover:underline" to={`/app/${encodeURIComponent(app.name)}`}>
                       {app.name}
                     </Link>
                   </TableCell>

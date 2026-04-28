@@ -25,6 +25,7 @@ export function ConnectPage() {
     (settings?.serverUrl ?? "") === "/__cp" ? "" : (settings?.serverUrl ?? ""),
   );
   const [accessKey, setAccessKey] = useState(settings?.accessKey ?? "");
+  const [remember30Days, setRemember30Days] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -42,8 +43,8 @@ export function ConnectPage() {
         setErr("Access key không hợp lệ hoặc đã hết hạn.");
         return;
       }
-      saveAndApply(cfg);
-      navigate("/apps", { replace: true });
+      saveAndApply(cfg, { rememberDays: remember30Days ? 30 : 0 });
+      navigate("/", { replace: true });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Không kết nối được máy chủ.");
     } finally {
@@ -65,14 +66,6 @@ export function ConnectPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={useDevProxy}
-                onChange={(ev) => setUseDevProxy(ev.target.checked)}
-              />
-              Dùng dev proxy (né CORS)
-            </label>
             <div className="space-y-2">
               <label className="text-sm font-medium">URL máy chủ</label>
               <Input
@@ -93,6 +86,22 @@ export function ConnectPage() {
                 onChange={(ev) => setAccessKey(ev.target.value)}
               />
             </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={useDevProxy}
+                onChange={(ev) => setUseDevProxy(ev.target.checked)}
+              />
+              Dùng dev proxy (né CORS)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={remember30Days}
+                onChange={(ev) => setRemember30Days(ev.target.checked)}
+              />
+              Ghi nhớ đăng nhập trong 30 ngày
+            </label>
             {err ? <p className="error">{err}</p> : null}
             <Button className="w-full" disabled={pending} type="submit">
               {pending ? "Đang kiểm tra..." : "Đăng nhập"}

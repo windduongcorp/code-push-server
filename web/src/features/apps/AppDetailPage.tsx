@@ -148,7 +148,7 @@ export function AppDetailPage() {
         <div>
           <Link
             className="text-sm text-muted-foreground hover:underline"
-            to="/apps"
+            to="/"
           >
             ← Quay lại ứng dụng
           </Link>

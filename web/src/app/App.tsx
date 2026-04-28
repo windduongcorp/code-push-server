@@ -5,7 +5,8 @@ import { AppDetailPage } from "@/features/apps/AppDetailPage";
 import { useAuth } from "@/lib/auth-context";
 
 function RequireConn({ children }: { children: React.ReactNode }) {
-  const { settings } = useAuth();
+  const { settings, hydrated } = useAuth();
+  if (!hydrated) return null;
   if (!settings?.serverUrl || !settings.accessKey)
     return <Navigate to="/login" replace />;
   return <>{children}</>;
@@ -17,7 +18,7 @@ export function App() {
       <Routes>
         <Route path="/login" element={<ConnectPage />} />
         <Route
-          path="/apps"
+          path="/"
           element={
             <RequireConn>
               <AppsPage />
@@ -25,15 +26,16 @@ export function App() {
           }
         />
         <Route
-          path="/apps/:appName"
+          path="/app/:appName"
           element={
             <RequireConn>
               <AppDetailPage />
             </RequireConn>
           }
         />
-        <Route path="/" element={<Navigate to="/apps" replace />} />
-        <Route path="*" element={<Navigate to="/apps" replace />} />
+        <Route path="/apps" element={<Navigate to="/" replace />} />
+        <Route path="/apps/:appName" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </main>
   );
