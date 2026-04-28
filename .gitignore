@@ -30,6 +30,9 @@ node_modules
 # Build specific exclusions
 */bin/
 
+# Web dashboard build output
+web/dist/
+
 # Environment variables
 *.env
 
