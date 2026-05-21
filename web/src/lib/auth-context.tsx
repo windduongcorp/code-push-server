@@ -37,7 +37,6 @@ const AuthContext = createContext<AuthCtx | null>(null);
 function normalizeServerUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
-  if (trimmed === "/__cp") return trimmed;
 
   let candidate = trimmed;
 
@@ -59,14 +58,6 @@ function normalizeServerUrl(raw: string): string {
   }
 }
 
-function sanitizeServerUrlForRuntime(raw: string): string {
-  const normalized = normalizeServerUrl(raw);
-  if (normalized !== "/__cp") return normalized;
-  if (import.meta.env.DEV) return normalized;
-  const fallback = import.meta.env.VITE_DEFAULT_SERVER_URL ?? "";
-  return normalizeServerUrl(fallback);
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettingsState] = useState<ConnectionSettings | null>(
     null,
@@ -80,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         import.meta.env.VITE_DEFAULT_SERVER_URL ??
         "";
       const accessKey = sessionStorage.getItem(STORAGE_KEY) ?? "";
-      const sessionServerUrl = sanitizeServerUrlForRuntime(serverUrl);
+      const sessionServerUrl = normalizeServerUrl(serverUrl);
       if (sessionServerUrl && accessKey) {
         setSettingsState({ serverUrl: sessionServerUrl, accessKey });
         return;
@@ -101,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const next = {
-        serverUrl: sanitizeServerUrlForRuntime(persisted.serverUrl),
+        serverUrl: normalizeServerUrl(persisted.serverUrl),
         accessKey: persisted.accessKey.trim(),
       };
       if (!next.serverUrl) {
@@ -121,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const saveAndApply = useCallback(
     (s: ConnectionSettings, options?: { rememberDays?: number }) => {
       const next = {
-        serverUrl: sanitizeServerUrlForRuntime(s.serverUrl),
+        serverUrl: normalizeServerUrl(s.serverUrl),
         accessKey: s.accessKey.trim(),
       };
       sessionStorage.setItem(STORAGE_SERVER, next.serverUrl);

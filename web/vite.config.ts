@@ -1,26 +1,23 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      // Dev-only reverse proxy so browser avoids backend CORS issues.
-      "/__cp": {
-        target: process.env.VITE_DEV_PROXY_TARGET || "https://codepush.windduong.com",
-        changeOrigin: true,
-        secure: true,
-        rewrite: (p) => p.replace(/^\/__cp/, ""),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const port = Number(env.PORT) || 5173;
+
+  return {
+    plugins: [react()],
+    server: {
+      port,
+    },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "src"),
       },
     },
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
-  },
+  };
 });

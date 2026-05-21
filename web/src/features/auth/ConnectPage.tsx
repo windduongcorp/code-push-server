@@ -17,7 +17,6 @@ import { toast } from "sonner";
 const PLACEHOLDER = "https://codepush.example.com";
 const DEFAULT_SERVER_URL =
   import.meta.env.VITE_DEFAULT_SERVER_URL?.trim() ?? "";
-const DEV_PROXY_AVAILABLE = import.meta.env.DEV;
 
 function normalizeServerUrlInput(raw: string): string {
   const trimmed = raw.trim();
@@ -44,14 +43,7 @@ function normalizeServerUrlInput(raw: string): string {
 export function ConnectPage() {
   const navigate = useNavigate();
   const { settings, saveAndApply } = useAuth();
-  const [useDevProxy, setUseDevProxy] = useState(
-    DEV_PROXY_AVAILABLE && (settings?.serverUrl ?? "") === "/__cp",
-  );
-  const [serverUrl, setServerUrl] = useState(
-    (settings?.serverUrl ?? "") === "/__cp"
-      ? DEFAULT_SERVER_URL
-      : (settings?.serverUrl ?? ""),
-  );
+  const [serverUrl, setServerUrl] = useState(settings?.serverUrl ?? "");
   const [accessKey, setAccessKey] = useState(settings?.accessKey ?? "");
   const [remember30Days, setRemember30Days] = useState(true);
   const [pending, setPending] = useState(false);
@@ -62,17 +54,14 @@ export function ConnectPage() {
     const normalizedServerUrl = normalizeServerUrlInput(
       serverUrl.trim() || DEFAULT_SERVER_URL || PLACEHOLDER,
     );
-    const targetServerUrl =
-      DEV_PROXY_AVAILABLE && useDevProxy ? "/__cp" : normalizedServerUrl;
-
-    if (!targetServerUrl) {
+    if (!normalizedServerUrl) {
       toast.error("URL máy chủ không hợp lệ.");
       setPending(false);
       return;
     }
 
     const cfg = {
-      serverUrl: targetServerUrl,
+      serverUrl: normalizedServerUrl,
       accessKey: accessKey.trim(),
     };
     try {
@@ -112,8 +101,7 @@ export function ConnectPage() {
                 type="url"
                 value={serverUrl}
                 placeholder={PLACEHOLDER}
-                required={!useDevProxy}
-                disabled={useDevProxy}
+                required
                 onChange={(ev) => setServerUrl(ev.target.value)}
               />
             </div>
@@ -126,16 +114,6 @@ export function ConnectPage() {
                 onChange={(ev) => setAccessKey(ev.target.value)}
               />
             </div>
-            {DEV_PROXY_AVAILABLE ? (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={useDevProxy}
-                  onChange={(ev) => setUseDevProxy(ev.target.checked)}
-                />
-                Dùng dev proxy (né CORS)
-              </label>
-            ) : null}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
