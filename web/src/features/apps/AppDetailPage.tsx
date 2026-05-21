@@ -9,7 +9,19 @@ import type {
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { HamburgerMenu } from "@/components/ui/hamburger-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -18,13 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function fmtTime(ms?: number): string {
   if (ms == null) return "—";
@@ -62,10 +72,7 @@ export function AppDetailPage() {
   const [deployments, setDeployments] = useState<api.Deployment[]>([]);
   const [collaborators, setCollaborators] = useState<CollaboratorMap>({});
   const [history, setHistory] = useState<DeployHistoryPackage[]>([]);
-  const [err, setErr] = useState<string | null>(null);
   const [activeDeployment, setActiveDeployment] = useState<string | null>(null);
-  const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [historyMenuFor, setHistoryMenuFor] = useState<string | null>(null);
   const [metricsData, setMetricsData] = useState<DeploymentMetrics>({});
   const [modal, setModal] = useState<ModalKind>(null);
   const [modalTarget, setModalTarget] = useState<string>("");
@@ -91,7 +98,6 @@ export function AppDetailPage() {
 
   const loadBase = useCallback(async () => {
     if (!settings || !appName) return;
-    setErr(null);
     try {
       const [d, c] = await Promise.all([
         api.listDeployments(settings, appName),
@@ -111,7 +117,7 @@ export function AppDetailPage() {
         navigate("/login", { replace: true });
         return;
       }
-      setErr(e instanceof Error ? e.message : String(e));
+      toast.error(getErrorMessage(e) || "Không tải được dữ liệu ứng dụng");
     }
   }, [appName, navigate, setSettings, settings]);
 
@@ -120,7 +126,7 @@ export function AppDetailPage() {
     try {
       setHistory(await api.getHistory(settings, appName, activeDeployment));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      toast.error(getErrorMessage(e) || "Không tải được lịch sử release");
     }
   }, [activeDeployment, appName, settings]);
 
@@ -135,6 +141,10 @@ export function AppDetailPage() {
   const deploymentNames = useMemo(
     () => deployments.map((d) => d.name),
     [deployments],
+  );
+  const selectedDeployment = useMemo(
+    () => deployments.find((d) => d.name === activeDeployment) ?? null,
+    [activeDeployment, deployments],
   );
 
   async function refreshAll() {
@@ -161,8 +171,6 @@ export function AppDetailPage() {
         </Button>
       </header>
 
-      {err ? <p className="error">{err}</p> : null}
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Collaborators</CardTitle>
@@ -178,13 +186,18 @@ export function AppDetailPage() {
               disabled={!newCollaboratorEmail.trim() || !settings}
               onClick={async () => {
                 if (!settings || !newCollaboratorEmail.trim()) return;
-                await api.addCollaborator(
-                  settings,
-                  appName,
-                  newCollaboratorEmail.trim(),
-                );
-                setNewCollaboratorEmail("");
-                await loadBase();
+                try {
+                  await api.addCollaborator(
+                    settings,
+                    appName,
+                    newCollaboratorEmail.trim(),
+                  );
+                  setNewCollaboratorEmail("");
+                  await loadBase();
+                } catch (error) {
+                  const message = getErrorMessage(error);
+                  toast.error(message || "Thêm collaborator thất bại");
+                }
               }}
             >
               Thêm collaborator
@@ -232,124 +245,94 @@ export function AppDetailPage() {
 
       <Card>
         <CardHeader className="space-y-3">
-          <CardTitle className="text-base">Deployments</CardTitle>
-          <div className="flex w-full justify-end">
-            <Button onClick={() => setModal("createDeployment")}>
-              + Thêm môi trường
-            </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base">Deployments</CardTitle>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <select
+                className="h-10 min-w-[220px] rounded-md border bg-background px-3 text-sm"
+                value={activeDeployment ?? ""}
+                onChange={(e) => {
+                  setActiveDeployment(e.target.value || null);
+                }}
+                disabled={!deployments.length}
+              >
+                {deploymentNames.length ? null : (
+                  <option value="">Chưa có môi trường</option>
+                )}
+                {deploymentNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <Button onClick={() => setModal("createDeployment")}>
+                + Thêm môi trường
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {deployments.map((d) => (
-            <div
-              key={d.name}
-              className={`rounded-md border p-3 ${activeDeployment === d.name ? "bg-muted" : "bg-card"}`}
-              style={{
-                position: "relative",
-                zIndex: menuFor === d.name ? 20 : 1,
-              }}
-            >
+          {!selectedDeployment ? (
+            <p className="text-sm text-muted-foreground">
+              Chưa có môi trường nào.
+            </p>
+          ) : (
+            <div className="rounded-md border bg-card p-3">
               <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  className="h-auto px-0 py-0 text-left font-semibold"
-                  onClick={() => setActiveDeployment(d.name)}
+                <h3 className="font-semibold">{selectedDeployment.name}</h3>
+                <HamburgerMenu
+                  triggerClassName="ml-auto"
+                  contentClassName="w-52"
+                  ariaLabel="Deployment actions"
                 >
-                  {d.name}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="ml-auto shrink-0"
-                  onClick={() =>
-                    setMenuFor((prev) => (prev === d.name ? null : d.name))
-                  }
-                >
-                  ☰
-                </Button>
-              </div>
-              {d.key ? (
-                <div className="mt-2 flex items-start gap-2">
-                  <code className="flex-1 break-all rounded bg-muted px-2 py-1 text-xs">
-                    {d.key}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void copyText(d.key!)}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              ) : null}
-              <p className="muted mt-2">
-                {d.package ? (
-                  <>
-                    Release hiện tại: <strong>{d.package.label ?? "?"}</strong>{" "}
-                    — app version{" "}
-                    <span className="font-mono">
-                      {d.package.appVersion ?? "—"}
-                    </span>
-                  </>
-                ) : (
-                  "Chưa có release."
-                )}
-              </p>
-
-              {menuFor === d.name ? (
-                <div className="absolute right-3 top-12 z-30 w-48 space-y-1 rounded-md border bg-card p-2 shadow-lg">
-                  <Button
-                    className="w-full justify-start"
-                    variant="ghost"
+                  <DropdownMenuItem
                     onClick={async () => {
                       if (!settings) return;
-                      setMenuFor(null);
-                      setModalTarget(d.name);
+                      setModalTarget(selectedDeployment.name);
                       setMetricsData(
-                        await api.getMetrics(settings, appName, d.name),
+                        await api.getMetrics(
+                          settings,
+                          appName,
+                          selectedDeployment.name,
+                        ),
                       );
                       setModal("metrics");
                     }}
                   >
                     Metrics
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="ghost"
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => {
-                      setMenuFor(null);
-                      setModalTarget(d.name);
+                      setModalTarget(selectedDeployment.name);
                       setPromoteTarget("");
                       setModal("promote");
                     }}
                   >
                     Promote
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="ghost"
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={async () => {
                       if (!settings) return;
-                      setMenuFor(null);
-                      const h = await api.getHistory(settings, appName, d.name);
+                      const h = await api.getHistory(
+                        settings,
+                        appName,
+                        selectedDeployment.name,
+                      );
                       setRollbackOptions(
                         h
                           .map((x) => x.label)
                           .filter((x): x is string => Boolean(x)),
                       );
                       setRollbackLabel("__PREVIOUS__");
-                      setModalTarget(d.name);
+                      setModalTarget(selectedDeployment.name);
                       setModal("rollback");
                     }}
                   >
                     Rollback
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="ghost"
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => {
-                      setMenuFor(null);
-                      setModalTarget(d.name);
+                      setModalTarget(selectedDeployment.name);
                       setUploadZipFile(null);
                       setUploadAppVersion("");
                       setUploadDesc("");
@@ -358,58 +341,86 @@ export function AppDetailPage() {
                     }}
                   >
                     Tải release (.zip)
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="ghost"
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={async () => {
                       if (
                         !settings ||
                         !confirm(
-                          `Clear toàn bộ lịch sử release của "${d.name}"?`,
+                          `Clear toàn bộ lịch sử release của "${selectedDeployment.name}"?`,
                         )
                       )
                         return;
-                      setMenuFor(null);
                       await api.clearDeploymentHistory(
                         settings,
                         appName,
-                        d.name,
+                        selectedDeployment.name,
                       );
                       await refreshAll();
                     }}
                   >
                     Clear history
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="ghost"
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => {
-                      setMenuFor(null);
-                      setModalTarget(d.name);
-                      setRenameDeploymentValue(d.name);
+                      setModalTarget(selectedDeployment.name);
+                      setRenameDeploymentValue(selectedDeployment.name);
                       setModal("renameDeployment");
                     }}
                   >
                     Edit name
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    variant="destructive"
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
                     onClick={async () => {
-                      if (!settings || !confirm(`Xóa môi trường "${d.name}"?`))
+                      if (
+                        !settings ||
+                        !confirm(`Xóa môi trường "${selectedDeployment.name}"?`)
+                      )
                         return;
-                      setMenuFor(null);
-                      await api.deleteDeployment(settings, appName, d.name);
+                      await api.deleteDeployment(
+                        settings,
+                        appName,
+                        selectedDeployment.name,
+                      );
                       await refreshAll();
                     }}
                   >
                     Delete
+                  </DropdownMenuItem>
+                </HamburgerMenu>
+              </div>
+              {selectedDeployment.key ? (
+                <div className="mt-2 flex items-start gap-2">
+                  <code className="flex-1 break-all rounded bg-muted px-2 py-1 text-xs">
+                    {selectedDeployment.key}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void copyText(selectedDeployment.key!)}
+                  >
+                    Copy
                   </Button>
                 </div>
               ) : null}
+              <p className="muted mt-2">
+                {selectedDeployment.package ? (
+                  <>
+                    Release hiện tại:{" "}
+                    <strong>{selectedDeployment.package.label ?? "?"}</strong> —
+                    app version{" "}
+                    <span className="font-mono">
+                      {selectedDeployment.package.appVersion ?? "—"}
+                    </span>
+                  </>
+                ) : (
+                  "Chưa có release."
+                )}
+              </p>
             </div>
-          ))}
+          )}
         </CardContent>
       </Card>
 
@@ -441,57 +452,41 @@ export function AppDetailPage() {
                     className="text-right"
                     style={{ position: "relative" }}
                   >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setHistoryMenuFor((prev) =>
-                          prev === h.label ? null : (h.label ?? null),
-                        )
-                      }
+                    <HamburgerMenu
+                      contentClassName="w-56"
+                      ariaLabel="History row actions"
                     >
-                      ☰
-                    </Button>
-                    {historyMenuFor === h.label ? (
-                      <div className="absolute right-0 top-10 z-30 w-56 space-y-1 rounded-md border bg-card p-2 shadow-lg">
-                        <Button
-                          className="w-full justify-start"
-                          variant="ghost"
-                          onClick={async () => {
-                            if (!settings || !activeDeployment || !h.label)
-                              return;
-                            setHistoryMenuFor(null);
-                            await api.rollback(
-                              settings,
-                              appName,
-                              activeDeployment,
-                              h.label,
-                            );
-                            await refreshAll();
-                          }}
-                        >
-                          Rollback về label này
-                        </Button>
-                        <Button
-                          className="w-full justify-start"
-                          variant="ghost"
-                          onClick={() => {
-                            setHistoryMenuFor(null);
-                            setModalTarget(h.label ?? "");
-                            setHistoryDescription(h.description ?? "");
-                            setHistoryMandatory(Boolean(h.isMandatory));
-                            setHistoryDisabled(Boolean(h.isDisabled));
-                            const rolloutText =
-                              h.rollout == null ? "" : String(h.rollout);
-                            setHistoryRollout(rolloutText);
-                            setInitialHistoryRollout(rolloutText);
-                            setModal("editHistory");
-                          }}
-                        >
-                          Sửa metadata release
-                        </Button>
-                      </div>
-                    ) : null}
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          if (!settings || !activeDeployment || !h.label)
+                            return;
+                          await api.rollback(
+                            settings,
+                            appName,
+                            activeDeployment,
+                            h.label,
+                          );
+                          await refreshAll();
+                        }}
+                      >
+                        Rollback về label này
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setModalTarget(h.label ?? "");
+                          setHistoryDescription(h.description ?? "");
+                          setHistoryMandatory(Boolean(h.isMandatory));
+                          setHistoryDisabled(Boolean(h.isDisabled));
+                          const rolloutText =
+                            h.rollout == null ? "" : String(h.rollout);
+                          setHistoryRollout(rolloutText);
+                          setInitialHistoryRollout(rolloutText);
+                          setModal("editHistory");
+                        }}
+                      >
+                        Sửa metadata release
+                      </DropdownMenuItem>
+                    </HamburgerMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -846,9 +841,13 @@ export function AppDetailPage() {
                 onClick={async () => {
                   if (!settings || !activeDeployment || !modalTarget) return;
                   const rolloutRaw = historyRollout.trim();
-                  const rolloutValue = rolloutRaw ? Number(rolloutRaw) : undefined;
+                  const rolloutValue = rolloutRaw
+                    ? Number(rolloutRaw)
+                    : undefined;
                   if (rolloutRaw && !Number.isFinite(rolloutValue)) {
-                    setErr("Rollout phải là số hợp lệ (ví dụ: 10, 50, 100).");
+                    toast.error(
+                      "Rollout phải là số hợp lệ (ví dụ: 10, 50, 100).",
+                    );
                     return;
                   }
                   const shouldSendRollout =
@@ -856,19 +855,25 @@ export function AppDetailPage() {
                     rolloutRaw !== initialHistoryRollout.trim();
 
                   setBusy(true);
-                  setErr(null);
                   try {
-                    await api.patchRelease(settings, appName, activeDeployment, {
-                      label: modalTarget,
-                      description: historyDescription || undefined,
-                      isMandatory: historyMandatory,
-                      isDisabled: historyDisabled,
-                      ...(shouldSendRollout ? { rollout: rolloutValue } : {}),
-                    });
+                    await api.patchRelease(
+                      settings,
+                      appName,
+                      activeDeployment,
+                      {
+                        label: modalTarget,
+                        description: historyDescription || undefined,
+                        isMandatory: historyMandatory,
+                        isDisabled: historyDisabled,
+                        ...(shouldSendRollout ? { rollout: rolloutValue } : {}),
+                      },
+                    );
                     setModal(null);
                     await refreshAll();
                   } catch (e) {
-                    setErr(e instanceof Error ? e.message : String(e));
+                    toast.error(
+                      getErrorMessage(e) || "Cập nhật release thất bại",
+                    );
                   } finally {
                     setBusy(false);
                   }

@@ -3,7 +3,14 @@ import type * as api from "@/lib/codepush-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type Props = {
   apps: api.AppRow[];
@@ -15,7 +22,15 @@ type Props = {
   onDelete: (name: string) => Promise<void>;
 };
 
-export function AppsManager({ apps, newName, setNewName, onAdd, onRename, onTransfer, onDelete }: Props) {
+export function AppsManager({
+  apps,
+  newName,
+  setNewName,
+  onAdd,
+  onRename,
+  onTransfer,
+  onDelete,
+}: Props) {
   return (
     <div className="space-y-4">
       <Card>
@@ -23,7 +38,11 @@ export function AppsManager({ apps, newName, setNewName, onAdd, onRename, onTran
           <CardTitle className="text-base">Tạo ứng dụng mới</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
-          <Input placeholder="Tên app" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          <Input
+            placeholder="Tên app"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+          />
           <Button disabled={!newName.trim()} onClick={() => void onAdd()}>
             Thêm app
           </Button>
@@ -46,19 +65,34 @@ export function AppsManager({ apps, newName, setNewName, onAdd, onRename, onTran
               {apps.map((app) => (
                 <TableRow key={app.name}>
                   <TableCell>
-                    <Link className="text-primary hover:underline" to={`/app/${encodeURIComponent(app.name)}`}>
+                    <Link
+                      className="text-primary hover:underline"
+                      to={`/apps/${encodeURIComponent(app.name)}`}
+                    >
                       {app.name}
                     </Link>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="outline" onClick={() => void onTransfer(app.name)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void onTransfer(app.name)}
+                      >
                         Transfer
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => void onRename(app.name)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void onRename(app.name)}
+                      >
                         Đổi tên
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => void onDelete(app.name)}>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => void onDelete(app.name)}
+                      >
                         Xóa
                       </Button>
                     </div>

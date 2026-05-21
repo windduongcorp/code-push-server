@@ -14,7 +14,10 @@ export const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px]", className)}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px]",
+      className,
+    )}
     {...props}
   />
 ));
@@ -30,9 +33,10 @@ export const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card p-6 shadow-lg",
-        className
+        className,
       )}
-      {...props}>
+      {...props}
+    >
       {children}
       <DialogPrimitive.Close className="absolute right-3 top-3 rounded opacity-70 hover:opacity-100">
         <X className="h-4 w-4" />
@@ -43,14 +47,73 @@ export const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-4 flex flex-col gap-1", className)} {...props} />;
+export function DialogHeader({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("mb-4 flex flex-col gap-1", className)} {...props} />
+  );
 }
 
-export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export function DialogTitle({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) {
   return <h3 className={cn("text-lg font-semibold", className)} {...props} />;
 }
 
-export function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn("text-sm text-muted-foreground", className)} {...props} />;
+export function DialogDescription({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p className={cn("text-sm text-muted-foreground", className)} {...props} />
+  );
+}
+
+export function DialogFooter({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("mt-4 flex justify-end gap-2", className)} {...props} />
+  );
+}
+
+type AppDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+  contentClassName?: string;
+  bodyClassName?: string;
+};
+
+export function AppDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  actions,
+  contentClassName,
+  bodyClassName,
+}: AppDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={contentClassName}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description ? (
+            <DialogDescription>{description}</DialogDescription>
+          ) : null}
+        </DialogHeader>
+        <div className={cn("space-y-4", bodyClassName)}>{children}</div>
+        {actions ? <DialogFooter>{actions}</DialogFooter> : null}
+      </DialogContent>
+    </Dialog>
+  );
 }

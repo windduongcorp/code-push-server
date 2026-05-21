@@ -2,7 +2,15 @@ import type * as api from "@/lib/codepush-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { AccessKeyCreatedDialog } from "@/features/apps/components/AccessKeyCreatedDialog";
 
 type Props = {
   accessKeys: api.AccessKeyInfo[];
@@ -42,30 +50,27 @@ export function AccessKeysManager(props: Props) {
           <CardTitle className="text-base">Tạo access key</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-[1fr_180px_auto]">
-          <Input placeholder="Tên key (ví dụ: ci-prod)" value={newName} onChange={(e) => setNewName(e.target.value)} />
-          <Input placeholder="TTL (ngày)" value={ttlDays} onChange={(e) => setTtlDays(e.target.value)} />
+          <Input
+            placeholder="Tên key (ví dụ: ci-prod)"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+          />
+          <Input
+            placeholder="TTL (ngày)"
+            value={ttlDays}
+            onChange={(e) => setTtlDays(e.target.value)}
+          />
           <Button disabled={!newName.trim()} onClick={() => void onCreate()}>
             Tạo
           </Button>
         </CardContent>
       </Card>
 
-      {createdAccessKey?.key ? (
-        <Card className="border-primary/40">
-          <CardHeader>
-            <CardTitle className="text-base">Access key mới tạo (chỉ hiển thị một lần)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <code className="block break-all rounded-md bg-muted p-3 text-xs">{createdAccessKey.key}</code>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => void onCopyCreated()}>
-                Copy
-              </Button>
-              <Button onClick={onDismissCreated}>Đã lưu xong</Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+      <AccessKeyCreatedDialog
+        createdAccessKey={createdAccessKey}
+        onCopyCreated={onCopyCreated}
+        onDismissCreated={onDismissCreated}
+      />
 
       <Card>
         <CardHeader>
@@ -87,17 +92,35 @@ export function AccessKeysManager(props: Props) {
                 return (
                   <TableRow key={`${keyName}-${i}`}>
                     <TableCell>{keyName}</TableCell>
-                    <TableCell>{k.createdTime ? new Date(k.createdTime).toLocaleString() : "—"}</TableCell>
-                    <TableCell>{k.expires ? new Date(k.expires).toLocaleString() : "—"}</TableCell>
+                    <TableCell>
+                      {k.createdTime
+                        ? new Date(k.createdTime).toLocaleString()
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {k.expires ? new Date(k.expires).toLocaleString() : "—"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => void onRename(keyName)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void onRename(keyName)}
+                        >
                           Đổi tên
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => void onRotate(keyName)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void onRotate(keyName)}
+                        >
                           Rotate
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => void onDelete(keyName)}>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => void onDelete(keyName)}
+                        >
                           Xóa
                         </Button>
                       </div>

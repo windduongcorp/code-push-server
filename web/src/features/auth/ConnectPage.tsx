@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 const PLACEHOLDER = "https://codepush.example.com";
 
@@ -26,12 +27,10 @@ export function ConnectPage() {
   );
   const [accessKey, setAccessKey] = useState(settings?.accessKey ?? "");
   const [remember30Days, setRemember30Days] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(ev: FormEvent) {
     ev.preventDefault();
-    setErr(null);
     setPending(true);
     const cfg = {
       serverUrl: useDevProxy ? "/__cp" : serverUrl.trim() || PLACEHOLDER,
@@ -40,13 +39,15 @@ export function ConnectPage() {
     try {
       const ok = await api.checkAuthenticated(cfg);
       if (!ok) {
-        setErr("Access key không hợp lệ hoặc đã hết hạn.");
+        toast.error("Access key không hợp lệ hoặc đã hết hạn.");
         return;
       }
       saveAndApply(cfg, { rememberDays: remember30Days ? 30 : 0 });
       navigate("/", { replace: true });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Không kết nối được máy chủ.");
+      toast.error(
+        e instanceof Error ? e.message : "Không kết nối được máy chủ.",
+      );
     } finally {
       setPending(false);
     }
@@ -102,9 +103,8 @@ export function ConnectPage() {
               />
               Ghi nhớ đăng nhập trong 30 ngày
             </label>
-            {err ? <p className="error">{err}</p> : null}
-            <Button className="w-full" disabled={pending} type="submit">
-              {pending ? "Đang kiểm tra..." : "Đăng nhập"}
+            <Button className="w-full" loading={pending} type="submit">
+              Đăng nhập
             </Button>
           </form>
         </CardContent>
