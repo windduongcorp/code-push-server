@@ -16,7 +16,20 @@ function rewriteBlobUrlForClient(url: string | undefined): string | undefined {
   if (!url || !process.env.BLOB_URL) {
     return url;
   }
-  return url.replace("http://127.0.0.1:10000", process.env.BLOB_URL);
+
+  const defaultInternalBlobPrefixes: string[] = ["http://127.0.0.1:10000", "http://azurite_prod:10000"];
+  const configuredInternalBlobPrefix: string | undefined = process.env.BLOB_INTERNAL_URL_PREFIX;
+  const internalBlobPrefixes: string[] = configuredInternalBlobPrefix
+    ? [configuredInternalBlobPrefix, ...defaultInternalBlobPrefixes]
+    : defaultInternalBlobPrefixes;
+
+  for (const internalPrefix of internalBlobPrefixes) {
+    if (url.startsWith(internalPrefix)) {
+      return process.env.BLOB_URL + url.slice(internalPrefix.length);
+    }
+  }
+
+  return url;
 }
 
 export function getUpdatePackageInfo(packageHistory: Package[], request: UpdateCheckRequest): UpdateCheckCacheResponse {
@@ -122,9 +135,7 @@ function getUpdatePackage(packageHistory: Package[], request: UpdateCheckRequest
     latestSatisfyingEnabledPackage.diffPackageMap &&
     latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash]
   ) {
-    updateDetails.downloadURL = rewriteBlobUrlForClient(
-      latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash].url
-    );
+    updateDetails.downloadURL = rewriteBlobUrlForClient(latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash].url);
     updateDetails.packageSize = latestSatisfyingEnabledPackage.diffPackageMap[request.packageHash].size;
   } else {
     updateDetails.downloadURL = rewriteBlobUrlForClient(latestSatisfyingEnabledPackage.blobUrl);
