@@ -70,7 +70,7 @@ pipeline {
                     docker run -d \
                         --name ${APP_NAME} \
                         --restart always \
-                        --network vps-infra_backend \
+                        --network vps-infra \
                         --env-file "$WORKSPACE/web/.env" \
                         -p "${PORT}:${PORT}" \
                         ${APP_NAME}

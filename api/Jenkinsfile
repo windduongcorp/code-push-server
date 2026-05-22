@@ -70,7 +70,7 @@ pipeline {
                     docker run -d \
                         --name ${APP_NAME} \
                         --restart always \
-                        --network vps-infra_backend \
+                        --network vps-infra \
                         --env-file "$WORKSPACE/api/.env" \
                         -p "${API_PORT}:${API_PORT}" \
                         ${APP_NAME}
