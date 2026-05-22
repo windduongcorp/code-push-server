@@ -894,6 +894,7 @@ export class AzureStorage implements storage.Storage {
     }
 
     const tableHealthEntity: any = this.wrap({ health: "health" }, /*partitionKey=*/ "health", /*rowKey=*/ "health");
+    const packageBlobContainerClient = blobServiceClient.getContainerClient(AzureStorage.TABLE_NAME);
 
     return q
       .all([
@@ -902,9 +903,12 @@ export class AzureStorage implements storage.Storage {
         blobServiceClient.createContainer(AzureStorage.HISTORY_BLOB_CONTAINER_NAME),
       ])
       .then(() => {
+        return packageBlobContainerClient.setAccessPolicy("blob");
+      })
+      .then(() => {
         return q.all<any>([
           tableClient.createEntity(tableHealthEntity),
-          blobServiceClient.getContainerClient(AzureStorage.TABLE_NAME).uploadBlockBlob("health", "health", "health".length),
+          packageBlobContainerClient.uploadBlockBlob("health", "health", "health".length),
           blobServiceClient
             .getContainerClient(AzureStorage.HISTORY_BLOB_CONTAINER_NAME)
             .uploadBlockBlob("health", "health", "health".length),
@@ -918,8 +922,10 @@ export class AzureStorage implements storage.Storage {
       })
       .catch((error) => {
         if (error.code == "ContainerAlreadyExists") {
-          this._tableClient = tableClient;
-          this._blobService = blobServiceClient;
+          return packageBlobContainerClient.setAccessPolicy("blob").then(() => {
+            this._tableClient = tableClient;
+            this._blobService = blobServiceClient;
+          });
         } else {
           throw error;
         }
