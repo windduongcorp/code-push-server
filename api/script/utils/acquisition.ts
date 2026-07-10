@@ -17,7 +17,7 @@ function rewriteBlobUrlForClient(url: string | undefined): string | undefined {
     return url;
   }
 
-  const defaultInternalBlobPrefixes: string[] = ["http://127.0.0.1:10000", "http://azurite_prod:10000"];
+  const defaultInternalBlobPrefixes: string[] = ["http://127.0.0.1:10000", "http://azurite:10000"];
   const configuredInternalBlobPrefix: string | undefined = process.env.BLOB_INTERNAL_URL_PREFIX;
   const internalBlobPrefixes: string[] = configuredInternalBlobPrefix
     ? [configuredInternalBlobPrefix, ...defaultInternalBlobPrefixes]
