@@ -1,0 +1,59 @@
+name: code-push-infra
+
+services:
+  code-push-azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: code-push-azurite
+    restart: unless-stopped
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data --disableProductStyleUrl
+    ports:
+      - "${AZURITE_BLOB_PORT:-10000}:10000"
+      - "${AZURITE_QUEUE_PORT:-10001}:10001"
+      - "${AZURITE_TABLE_PORT:-10002}:10002"
+    volumes:
+      # Giữ nguyên volume vps-infra_azurite_data để không mất dữ liệu bundle/release cũ trên VPS
+      - vps-infra_azurite_data:/data
+    networks:
+      vps-infra:
+        aliases:
+          - azurite
+          - azurite_prod
+          - code-push-azurite
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
+
+  code-push-redis:
+    image: redis:7-alpine
+    container_name: code-push-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - code_push_redis_data:/data
+    networks:
+      vps-infra:
+        aliases:
+          - redis
+          - code-push-redis
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+
+volumes:
+  # Kế thừa volume azurite đang có sẵn trên VPS
+  vps-infra_azurite_data:
+    external: true
+  code_push_redis_data:
+
+networks:
+  # Dùng chung network vps-infra với Nginx và Jenkins
+  vps-infra:
+    external: true
